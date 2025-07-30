@@ -197,13 +197,13 @@ FROM
 SELECT
     DISTINCT (idEstatusPendiente)
 FROM
-    pendientes;
+;
 
 SELECT
     DISTINCT (idEstatusPendiente),
     es.estatus
 FROM
-    pendientes AS pe
+    AS pe
     INNER JOIN estatusPendiente AS es ON pe.idEstatusPendiente = es.id;
 
 SELECT
@@ -537,22 +537,20 @@ WHERE
 ORDER BY
     FIELD(title, 'Senior Staff', 'Engineer') DESC;
 
-USE dbPendientes;
+USE db;
 
 SELECT
     *
 FROM
-    pendientes
 ORDER BY
     id ASC
 LIMIT
     10;
 
--- DESCRIBE pendientes;
+-- DESCRIBE ;
 SELECT
     *
 FROM
-    pendientes
 ORDER BY
     id ASC
 LIMIT
@@ -662,7 +660,7 @@ FROM
     JOIN titles
     INNER JOIN salaries USING(emp_no);
 
-USE dbPendientes;
+USE db;
 
 -- * Se obtiene el mismo resultado que un INNER JOIN 
 SELECT
@@ -746,3 +744,338 @@ FROM
     clientes
 WHERE
     LEFT(telefono, 3) <> '340';
+
+/*
+ *  La subconsulta que se compara en el WHERE se llama SubConsulta Escalar
+ */
+SELECT
+    *,
+    (
+        SELECT
+            AVG(montoIE)
+        FROM
+            entradaSalidaDinero
+    ) AS promedio
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE < (
+        SELECT
+            AVG(montoIE)
+        FROM
+            entradaSalidaDinero
+    );
+
+/*
+ * SubConsultas de listas
+ */
+SELECT
+    p.nombre,
+    idPersonas,
+    idIngresosEgresos,
+    montoIE
+FROM
+    entradaSalidaDinero es
+    INNER JOIN personas p
+WHERE
+    nombre LIKE '%JUAN%';
+
+SELECT
+    idPersonas,
+    idIngresosEgresos,
+    montoIE
+FROM
+    entradaSalidaDinero
+WHERE
+    entradaSalidaDinero.idPersonas IN(
+        SELECT
+            id
+        FROM
+            personas
+        WHERE
+            personas.nombre LIKE '%JUAN%'
+    );
+
+-- * MontoIE > all
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE > ALL(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 1
+    );
+
+-- * MontoIE < all
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE < ALL(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 1
+    );
+
+-- * MontoIE = all 
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE = ALL(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 3
+    );
+
+-- * MontoIE <> all
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE <> ALL(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 1
+    );
+
+-- * Excepcion datos vacios siempre sera TRUE 
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE > ALL(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 100000
+    );
+
+/*
+ * SubConsultas ANY
+ */
+-- * MontoIE > ANY es mayor a cualquiera pero siempre va a comparar con el menor
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE > ANY(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 1
+    );
+
+-- * MontoIE < ANY debe ser menor al mayor
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE < ANY(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 1
+    );
+
+-- * MontoIE = ANY igual a cualquiera que viene en la subconsulta
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE = ANY(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 1
+    );
+
+-- * MontoIE <> ANY, es recomendado no utilizar 
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE <> ANY(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 3
+    );
+
+-- * Excepcion de datos vacios siempre sera TRUE
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    montoIE > ANY(
+        SELECT
+            montoIE
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idIngresosEgresos = 100000
+    );
+
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    idPersonas IN(1, 2);
+
+SELECT
+    idPersonas,
+    AVG(montoIE)
+FROM
+    entradaSalidaDinero
+WHERE
+    idPersonas IN(1, 2)
+GROUP BY
+    1;
+
+/*
+ * Sacamos el promedio de cada idPersona, luego con ese promedio mostramos los registros de la tabla entradaSalidaDinero 
+ * comparando por cada idPersona su propio promedio para mostrar solo los que sean mayor a su propio promedio
+ */
+SELECT
+    *,
+    (
+        SELECT
+            AVG(montoIE)
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idPersonas = esd.idPersonas
+    ) AS PromedioPorId
+FROM
+    entradaSalidaDinero esd
+WHERE
+    montoIE < (
+        SELECT
+            AVG(montoIE)
+        FROM
+            entradaSalidaDinero
+        WHERE
+            idPersonas = esd.idPersonas
+    );
+
+/*
+ *  Selecciona todos los registros de la tabla personas que no tengan usuario en la tabla de usuarios
+ */
+SELECT
+    *
+FROM
+    personas
+WHERE
+    NOT EXISTS (
+        SELECT
+            *
+        FROM
+            usuarios
+        WHERE
+            personas.id = usuarios.idPersonas
+    );
+
+/*
+ *  Selecciona todas las personas o todos los registros de la tabla de personas que no tengan ni un solo registro en la tabla de 
+ */
+SELECT
+    *
+FROM
+    personas
+WHERE
+    NOT EXISTS(
+        SELECT
+            *
+        FROM
+        WHERE
+            personas.id =.idPersonaAsignado
+    );
+
+/*
+ *   Selecciona todas las personas de la tabla de personas que no tengan entradas o salidas de dinero en la tabla entradaSalidaDinero
+ */
+SELECT
+    *
+FROM
+    personas
+WHERE
+    NOT EXISTS(
+        SELECT
+            *
+        FROM
+            entradaSalidaDinero
+        WHERE
+            entradaSalidaDinero.idPersonas = personas.id
+    );
+
+SELECT
+    *
+FROM
+    entradaSalidaDinero
+WHERE
+    idPersonas = 14;
+
+/*
+ *  Hacer uso de una subConsulta utilizando las tablas entradaSalidaDinero y la tabla de personas para que podamos extraer de
+ *  dicha union el idPersonas, el nombre y la suma de sus ingresos egresos, una vez que tengamos esta tabla virtual
+ *  hay que hacer un INNER JOIN con la tabla de usuarios para poder filtrar las personas con id = 1,2,3 
+ *  y mostrar campos de la tabla virtual y de la tabla usuarios(la externa no virtual) 
+ */
+-- * Cuando se usa SUM hay que hacer un GROUP BY con lo que esta antes de SUM es una regla.
+SELECT
+    aux.nombre,
+    u.nombre,
+    SUM(total)
+FROM
+    (
+        SELECT
+            esd.idPersonas,
+            p.nombre,
+            SUM(montoIE) AS Total
+        FROM
+            personas p
+            INNER JOIN entradaSalidaDinero esd ON esd.idPersonas = p.id
+        GROUP BY
+            p.id,
+            p.nombre
+    ) aux
+    INNER JOIN usuarios u ON u.idPersonas = aux.idPersonas
+WHERE
+    aux.idPersonas IN(1, 2, 3)
+GROUP BY
+    aux.nombre,
+    u.nombre;
